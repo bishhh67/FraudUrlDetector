@@ -113,13 +113,13 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────
-const API_URL = "http://localhost:5000/predict"; // Change to your backend URL
+const API_URL = "http://localhost:5050/predict"; // Change to your backend URL
 const USE_DEMO_MODE = false; // Set to FALSE once your backend is running
 
 // ── API status check ─────────────────────────────────────────────────────
 async function checkAPIStatus() {
   try {
-    const res = await fetch("http://localhost:5000/health", { signal: AbortSignal.timeout(2000) });
+    const res = await fetch("http://localhost:5050/health", { signal: AbortSignal.timeout(2000) });
     if (res.ok) {
       document.getElementById("apiDot").classList.add("connected");
       document.getElementById("apiStatusText").textContent = "BACKEND: CONNECTED";
@@ -255,7 +255,10 @@ function buildDemoReasons(f, label) {
 
 // ── Render result ─────────────────────────────────────────────────────────
 function renderResult(data, url) {
-  const { label, confidence, reasons } = data;
+const { consensus, reasons } = data;
+const label = consensus.label;
+const confidence = consensus.confidence;
+
   const pct = Math.round(confidence * 100);
 
   let verdict, icon, cls, sub;

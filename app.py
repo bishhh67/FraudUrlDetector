@@ -19,7 +19,7 @@ with open("feature_names.pkl", "rb") as f:
 
 print(f"✅ All 3 models loaded. Expecting {len(FEATURE_NAMES)} features.")
 
-# ── Feature extraction ───────────────────────────────────────────
+# ── Feature extraction ─────────────────────────────────────────
 def get_features(url):
     p = urlparse(url if url.startswith("http") else "https://" + url)
     h = p.hostname or ""
@@ -53,9 +53,11 @@ def get_features(url):
 # ── Reason generator ─────────────────────────────────────────────
 def get_reasons(url):
     reasons = []
+    url_lower = url.lower()
     p = urlparse(url if url.startswith("http") else "https://" + url)
-    h = p.hostname or ""
+    h = (p.hostname or "").lower()
 
+    # Bad indicators
     if re.search(r"\d+\.\d+\.\d+\.\d+", url):
         reasons.append({"text": "IP address used instead of domain", "type": "bad"})
     if len(url) > 75:
@@ -68,8 +70,17 @@ def get_reasons(url):
         reasons.append({"text": f"Too many dots in URL ({url.count('.')})", "type": "bad"})
     if url.count("-") > 3:
         reasons.append({"text": f"Many hyphens detected ({url.count('-')})", "type": "bad"})
-    if h.split(".")[-1] in ["tk", "ml", "cf", "ga", "xyz", "gq"]:
+    risky_tlds = ["tk", "ml", "cf", "ga", "xyz", "gq"]
+    if h.split(".")[-1] in risky_tlds:
         reasons.append({"text": f"Risky domain ending (.{h.split('.')[-1]})", "type": "bad"})
+    
+    # Brand impersonation check
+    suspicious_brands = ["paypal", "bank", "eurob", "amazon", "google", "netflix"]
+    for brand in suspicious_brands:
+        if brand in url_lower:
+            reasons.append({"text": f"Suspicious brand name detected: {brand}", "type": "bad"})
+    
+    # Good indicators
     if url.startswith("https"):
         reasons.append({"text": "HTTPS is present", "type": "good"})
     if not re.search(r"\d+\.\d+\.\d+\.\d+", url):
@@ -95,22 +106,34 @@ def predict():
         results = {}
 
         for name, model in models.items():
-            prob = float(model.predict_proba(features)[0][1])
+            try:
+                prob = float(model.predict_proba(features)[0][1])
+            except:
+                prob = 0.0  # fallback if model fails
             results[name] = {
-                "label":      int(prob > 0.5),
+                "label": int(prob > 0.5),
                 "confidence": round(prob, 4),
             }
 
         # Majority vote across all 3 models
-        votes    = sum(1 for r in results.values() if r["label"] == 1)
-        avg_prob = round(sum(r["confidence"] for r in results.values()) / 3, 4)
+        votes = sum(1 for r in results.values() if r["label"] == 1)
+        avg_prob = sum(r["confidence"] for r in results.values()) / 3
         consensus = int(votes >= 2)
 
+        # ── Heuristic: get reasons
+        reasons = get_reasons(url)
+        bad_reasons = [r for r in reasons if r["type"].lower() == "bad"]
+
+        # ── FORCE PHISHING if ANY bad reason exists
+        if len(bad_reasons) >= 1:
+            consensus = 1
+            avg_prob = max(avg_prob, 0.85)  # boost confidence
+
         return jsonify({
-            "url":       url,
-            "consensus": {"label": consensus, "confidence": avg_prob, "votes": votes},
-            "models":    results,
-            "reasons":   get_reasons(url),
+            "url": url,
+            "consensus": {"label": consensus, "confidence": round(avg_prob, 2), "votes": votes},
+            "models": results,
+            "reasons": reasons,
         })
 
     except Exception as e:
@@ -119,4 +142,4 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(port=5050, debug=True)
