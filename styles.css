@@ -389,6 +389,8 @@ h1 span { color: #93c5fd; }
   border: 1px solid var(--border);
   background: var(--surface2);
   color: var(--muted);
+
+
 }
 
 .url-part.scheme  { color: var(--accent); background: var(--accent-light); border-color: var(--accent-border); }
@@ -455,4 +457,9 @@ footer {
   .scan-btn { width: 100%; }
   .steps { grid-template-columns: 1fr 1fr; }
   .reasons-grid { grid-template-columns: 1fr; }
+}
+
+.name{
+  color:red,
+  
 }
