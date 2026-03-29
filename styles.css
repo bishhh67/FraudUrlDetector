@@ -460,6 +460,7 @@ footer {
 }
 
 .name{
-  color:green,
+  color:green;
+  margin:10;
   
 }
