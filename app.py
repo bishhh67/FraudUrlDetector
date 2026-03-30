@@ -35,11 +35,11 @@ def get_tld(hostname):
     """Extract TLD — tries multi-level first (co.uk), then single."""
     parts = hostname.lower().replace("www.", "").split(".")
     if len(parts) >= 3:
-        multi = ".".join(parts[-2:])   # e.g. co.uk, com.au
+        multi = ".".join(parts[-2:])   
         if f"tld_type_{multi}" in FEATURE_NAMES:
             return multi
     if len(parts) >= 2:
-        return parts[-1]               # e.g. com, net, org
+        return parts[-1]               
     return ""
 
 def get_features(url):
@@ -51,7 +51,6 @@ def get_features(url):
 
     tld = get_tld(h)
 
-    # ── Core features (matching your column names exactly) ────────
     known = {
         "url_length":           len(url),
         "hostname_length":      len(h),
@@ -80,13 +79,12 @@ def get_features(url):
         "source_encoded":       int("%" in url),
     }
 
-    # ── TLD one-hot columns (all start with tld_type_) ────────────
     tld_col = f"tld_type_{tld}"
     for col in FEATURE_NAMES:
         if col.startswith("tld_type_"):
             known[col] = 1 if col == tld_col else 0
 
-    # Build DataFrame — any missing column gets 0
+   
     row = {col: known.get(col, 0) for col in FEATURE_NAMES}
     return pd.DataFrame([row], columns=FEATURE_NAMES)
 
@@ -117,6 +115,34 @@ def get_reasons(url):
         reasons.append({"text": f"High URL randomness (entropy {calc_entropy(url):.1f})", "type": "bad"})
     if "%" in url:
         reasons.append({"text": "URL encoding detected (obfuscation)", "type": "bad"})
+
+# for safe indicators
+    if url.count("@") > 0:
+        reasons.append({"text": "@ symbol used to disguise real destination", "type": "bad"})
+    if re.search(r"[a-z]+-[a-z]+-[a-z]+", h):
+        reasons.append({"text": "Domain uses multiple hyphens (impersonation pattern)", "type": "bad"})
+    suspicious_found = [w for w in SUSPICIOUS_WORDS if w in url.lower()]
+    if len(suspicious_found) >= 2:
+        reasons.append({"text": f"Multiple suspicious words found: {', '.join(suspicious_found[:4])}", "type": "bad"})
+    subdomains = max(0, len(h.replace("www.", "").split(".")) - 1)
+    if subdomains >= 3:
+        reasons.append({"text": f"Excessive subdomains ({subdomains}) — common in phishing", "type": "bad"})
+    if re.search(r"(paypal|amazon|microsoft|apple|google|facebook|netflix|instagram|ebay)[^.]*\.", h) and \
+       not re.search(r"\.(paypal|amazon|microsoft|apple|google|facebook|netflix|instagram|ebay)\.com$", h):
+        reasons.append({"text": "Trusted brand name embedded in fake domain", "type": "bad"})
+    digit_ratio = sum(c.isdigit() for c in h) / max(len(h), 1)
+    if digit_ratio > 0.3:
+        reasons.append({"text": "Domain contains unusually high number of digits", "type": "bad"})
+    if re.search(r"(free|win|prize|bonus|gift|offer|deal|discount|limited|urgent|act-now)", url, re.I):
+        reasons.append({"text": "Urgency or reward bait words detected", "type": "bad"})
+    path = p.path or ""
+    if path.count("/") > 5:
+        reasons.append({"text": f"Deep directory path ({path.count('/')} levels) — typical of redirect chains", "type": "bad"})
+    if re.search(r"\.(exe|zip|rar|bat|scr|msi|apk|dmg)($|\?)", url, re.I):
+        reasons.append({"text": "URL points directly to an executable/archive file", "type": "bad"})
+    if re.search(r"(confirm|validate|reactivate|unlock|suspended|blocked|restore)", url, re.I):
+        reasons.append({"text": "Account-threat language detected (confirm/suspended/blocked)", "type": "bad"})
+    
 
     if full.startswith("https"):
         reasons.append({"text": "HTTPS is present", "type": "good"})
@@ -155,7 +181,6 @@ def predict():
 
         full_url = url if url.startswith("http") else "https://" + url
 
-        # Trusted domain shortcut
         if is_trusted(full_url):
             reasons = get_reasons(full_url)
             safe_result = {"label": 0, "confidence": 0.01}

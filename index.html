@@ -168,22 +168,8 @@ async function callBackend(url) {
   });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return await res.json();
-
-  /*
-    Expected backend response format:
-    {
-      "label": 0 or 1,           // 0 = legit, 1 = fraud
-      "confidence": 0.97,        // probability 0–1
-      "reasons": [               // list of flagged features
-        { "text": "IP address used instead of domain", "type": "bad" },
-        { "text": "Extremely long URL (247 chars)", "type": "bad" },
-        { "text": "Valid HTTPS scheme", "type": "good" }
-      ]
-    }
-  */
 }
 
-// ── Demo mode (no backend needed) ────────────────────────────────────────
 async function demoAnalyze(url) {
   await sleep(1800);
 
@@ -251,7 +237,6 @@ function buildDemoReasons(f, label) {
   return reasons.slice(0, 7);
 }
 
-// ── Render result ─────────────────────────────────────────────────────────
 function renderResult(data, url) {
 const { consensus, reasons } = data;
 const label = consensus.label;
@@ -367,7 +352,6 @@ function renderError(msg) {
   document.getElementById("result").style.display = "block";
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────
 function showLoading(show) {
   document.getElementById("loading").style.display = show ? "block" : "none";
   if (show) {
@@ -390,12 +374,10 @@ function shakeInput() {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// Allow Enter key
 document.getElementById("urlInput").addEventListener("keydown", e => {
   if (e.key === "Enter") analyzeURL();
 });
 
-// CSS for shake (inject)
 const style = document.createElement("style");
 style.textContent = `@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }`;
 document.head.appendChild(style);
