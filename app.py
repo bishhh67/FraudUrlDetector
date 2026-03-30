@@ -14,6 +14,7 @@ models = {
     "XGBoost":             joblib.load("model_xgb.pkl"),
 }
 
+
 with open("feature_names.pkl", "rb") as f:
     FEATURE_NAMES = pickle.load(f)
 
@@ -75,7 +76,7 @@ def get_reasons(url):
         reasons.append({"text": f"Risky domain ending (.{h.split('.')[-1]})", "type": "bad"})
     
     # Brand impersonation check
-    suspicious_brands = ["paypal", "bank", "eurob", "amazon", "google", "netflix"]
+    suspicious_brands = []
     for brand in suspicious_brands:
         if brand in url_lower:
             reasons.append({"text": f"Suspicious brand name detected: {brand}", "type": "bad"})
@@ -125,7 +126,7 @@ def predict():
         bad_reasons = [r for r in reasons if r["type"].lower() == "bad"]
 
         # ── FORCE PHISHING if ANY bad reason exists
-        if len(bad_reasons) >= 1:
+        if len(bad_reasons) >=1:
             consensus = 1
             avg_prob = max(avg_prob, 0.85)  # boost confidence
 
