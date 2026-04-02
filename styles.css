@@ -467,7 +467,8 @@ footer {
   padding: 40;
   bottom: 90;
   border-radius: 40;
-  background-repeat: inherit
+  background-repeat: inherit;
+  box-sizing: border-box;
   ;
   
 }
